@@ -124,7 +124,7 @@ npx -y tiktok-downloader-mcp
 
 ```text
 tiktok_downloads/
-  └── hudabeauty/
+  └── example_user/
       ├── account_summary.json            # Cumulative totals, averages, engagement & top posts
       ├── account_activity.json           # Complete chronological history of all posts
       ├── 2026-08-16_7674774636999003406/ # Photo Slideshow post folder

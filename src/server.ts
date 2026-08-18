@@ -57,7 +57,7 @@ export function createTikTokMcpServer(): McpServer {
     "tiktok_get_user_posts",
     "List recent post IDs, upload dates, and URLs for a TikTok user or profile URL.",
     {
-      username: z.string().describe("TikTok username (e.g. @hudabeauty or hudabeauty) or profile URL"),
+      username: z.string().describe("TikTok username (e.g. @username or username) or profile URL"),
       max: z.number().optional().default(50).describe("Maximum number of posts to fetch (default: 50)"),
     },
     async ({ username, max }) => {
@@ -139,7 +139,7 @@ export function createTikTokMcpServer(): McpServer {
     "tiktok_download_user_media",
     "Download all media (photos slideshows and/or HD MP4 videos) from a TikTok account into organized date folders (YYYY-MM-DD_<id>), with post.json in each folder and full account_summary.json.",
     {
-      username: z.string().describe("TikTok username (e.g. @hudabeauty) or profile URL"),
+      username: z.string().describe("TikTok username (e.g. @username) or profile URL"),
       max: z.number().optional().default(50).describe("Maximum number of posts to check (default: 50)"),
       output_dir: z.string().optional().default("./tiktok_downloads").describe("Target output directory"),
       media_type: z.enum(["all", "photos", "videos"]).optional().default("all").describe("Filter media type to download: 'all', 'photos', or 'videos' (default: 'all')"),
