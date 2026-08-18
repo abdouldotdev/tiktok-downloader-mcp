@@ -3,11 +3,72 @@ import path from "node:path";
 import type { TikTokPostData, AccountSummary } from "./tiktokApi.js";
 
 /**
+ * Downloads a video file (MP4) to a target directory
+ */
+export async function downloadVideoToFolder(
+  videoUrl: string,
+  folderPath: string,
+  coverUrl?: string
+): Promise<{ videoSaved: boolean; coverSaved: boolean }> {
+  if (!fs.existsSync(folderPath)) {
+    fs.mkdirSync(folderPath, { recursive: true });
+  }
+
+  const videoPath = path.join(folderPath, "video.mp4");
+  const coverPath = path.join(folderPath, "cover.jpg");
+  let videoSaved = false;
+  let coverSaved = false;
+
+  // 1. Download video
+  if (!fs.existsSync(videoPath) || fs.statSync(videoPath).size < 10000) {
+    try {
+      const res = await fetch(videoUrl, {
+        headers: {
+          "User-Agent":
+            "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
+          Referer: "https://www.tiktok.com/",
+        },
+      });
+      if (res.ok) {
+        const buf = Buffer.from(await res.arrayBuffer());
+        fs.writeFileSync(videoPath, buf);
+        videoSaved = true;
+      }
+    } catch {}
+  } else {
+    videoSaved = true;
+  }
+
+  // 2. Download cover
+  if (coverUrl && (!fs.existsSync(coverPath) || fs.statSync(coverPath).size < 1000)) {
+    try {
+      const res = await fetch(coverUrl, {
+        headers: {
+          "User-Agent":
+            "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
+          Referer: "https://www.tiktok.com/",
+        },
+      });
+      if (res.ok) {
+        const buf = Buffer.from(await res.arrayBuffer());
+        fs.writeFileSync(coverPath, buf);
+        coverSaved = true;
+      }
+    } catch {}
+  } else if (fs.existsSync(coverPath)) {
+    coverSaved = true;
+  }
+
+  return { videoSaved, coverSaved };
+}
+
+/**
  * Downloads an array of image URLs to a target directory
  */
 export async function downloadImagesToFolder(
   images: string[],
-  folderPath: string
+  folderPath: string,
+  coverUrl?: string
 ): Promise<number> {
   if (!fs.existsSync(folderPath)) {
     fs.mkdirSync(folderPath, { recursive: true });
@@ -39,22 +100,44 @@ export async function downloadImagesToFolder(
       count++;
     } catch {}
   }
+
+  // Also save cover if available
+  if (coverUrl) {
+    const coverPath = path.join(folderPath, "cover.jpg");
+    if (!fs.existsSync(coverPath)) {
+      try {
+        const res = await fetch(coverUrl);
+        if (res.ok) {
+          const buf = Buffer.from(await res.arrayBuffer());
+          fs.writeFileSync(coverPath, buf);
+        }
+      } catch {}
+    }
+  }
+
   return count;
 }
 
 /**
- * Saves a single post to a dated folder with metadata
+ * Saves a single post (slideshow or video) to a dated folder with metadata
  */
 export async function savePostToFolder(
   post: TikTokPostData,
   baseOutputDir: string,
   accountSummary?: AccountSummary
-): Promise<{ folderPath: string; downloadedImages: number }> {
+): Promise<{ folderPath: string; mediaType: "slideshow" | "video"; downloadedCount: number }> {
   const userFolder = path.join(baseOutputDir, post.author.uniqueId);
   const folderName = `${post.formattedDate}_${post.id}`;
   const postFolder = path.join(userFolder, folderName);
 
-  const downloadedImages = await downloadImagesToFolder(post.images, postFolder);
+  let downloadedCount = 0;
+
+  if (post.mediaType === "slideshow") {
+    downloadedCount = await downloadImagesToFolder(post.images, postFolder, post.cover);
+  } else if (post.videoUrl) {
+    const { videoSaved } = await downloadVideoToFolder(post.videoUrl, postFolder, post.cover);
+    if (videoSaved) downloadedCount = 1;
+  }
 
   const postJsonContent = {
     post_details: {
@@ -63,10 +146,12 @@ export async function savePostToFolder(
       author: post.author,
       title: post.title,
       content_desc: post.contentDesc,
+      media_type: post.mediaType,
       date: post.formattedDate,
       timestamp: post.createTime,
       url: post.url,
-      slides_count: post.images.length,
+      slides_count: post.mediaType === "slideshow" ? post.images.length : 0,
+      duration: post.duration,
       stats: post.stats,
       music: post.music,
     },
@@ -93,7 +178,7 @@ export async function savePostToFolder(
     );
   }
 
-  return { folderPath: postFolder, downloadedImages };
+  return { folderPath: postFolder, mediaType: post.mediaType, downloadedCount };
 }
 
 /**
@@ -105,7 +190,10 @@ export function computeAccountSummary(
   posts: TikTokPostData[]
 ): AccountSummary {
   const totalPosts = posts.length;
-  const totalSlides = posts.reduce((acc, p) => acc + p.images.length, 0);
+  const slideshows = posts.filter((p) => p.mediaType === "slideshow");
+  const videos = posts.filter((p) => p.mediaType === "video");
+  const totalSlides = slideshows.reduce((acc, p) => acc + p.images.length, 0);
+
   const totalViews = posts.reduce((acc, p) => acc + p.stats.views, 0);
   const totalLikes = posts.reduce((acc, p) => acc + p.stats.likes, 0);
   const totalComments = posts.reduce((acc, p) => acc + p.stats.comments, 0);
@@ -130,7 +218,9 @@ export function computeAccountSummary(
     },
     activityTotals: {
       totalPostsAnalyzed: totalPosts,
-      totalSlidesCount: totalSlides,
+      totalSlideshowsCount: slideshows.length,
+      totalVideosCount: videos.length,
+      totalImagesCount: totalSlides,
       totalViews,
       totalLikes,
       totalComments,
@@ -158,6 +248,7 @@ export function computeAccountSummary(
             date: sortedByViews[0].formattedDate,
             views: sortedByViews[0].stats.views,
             title: sortedByViews[0].title,
+            type: sortedByViews[0].mediaType,
           }
         : null,
       mostLiked: sortedByLikes[0]
@@ -166,6 +257,7 @@ export function computeAccountSummary(
             date: sortedByLikes[0].formattedDate,
             likes: sortedByLikes[0].stats.likes,
             title: sortedByLikes[0].title,
+            type: sortedByLikes[0].mediaType,
           }
         : null,
       mostShared: sortedByShares[0]
@@ -174,6 +266,7 @@ export function computeAccountSummary(
             date: sortedByShares[0].formattedDate,
             shares: sortedByShares[0].stats.shares,
             title: sortedByShares[0].title,
+            type: sortedByShares[0].mediaType,
           }
         : null,
       mostCommented: sortedByComments[0]
@@ -182,6 +275,7 @@ export function computeAccountSummary(
             date: sortedByComments[0].formattedDate,
             comments: sortedByComments[0].stats.comments,
             title: sortedByComments[0].title,
+            type: sortedByComments[0].mediaType,
           }
         : null,
     },

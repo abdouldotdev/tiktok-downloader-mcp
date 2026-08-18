@@ -1,16 +1,17 @@
-# 📱 TikTok Downloader & Analytics MCP Server
+# 📱 TikTok Media Downloader & Analytics MCP Server
 
 [![npm version](https://img.shields.io/npm/v/tiktok-downloader-mcp.svg)](https://www.npmjs.com/package/tiktok-downloader-mcp)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](https://opensource.org/licenses/MIT)
 
-A **Model Context Protocol (MCP)** server that enables AI assistants (**Claude Code**, **Claude Desktop**, **Cursor**, **Windsurf**, **Antigravity**) to **extract, analyze, and bulk-download TikTok photo slideshows and carousels in original HD without watermarks**, complete with automated date-based folder organization (`YYYY-MM-DD_<id>`) and in-depth account engagement analytics.
+A **Model Context Protocol (MCP)** server that enables AI assistants (**Claude Code**, **Claude Desktop**, **Cursor**, **Windsurf**, **Antigravity**) to **extract, analyze, and bulk-download TikTok videos (HD MP4) and photo slideshows/carousels in original quality without watermarks**, complete with automated date-based folder organization (`YYYY-MM-DD_<id>`) and in-depth account engagement analytics.
 
 ---
 
 ## ✨ Features
 
-- 📸 **No-Watermark HD Extraction**: Extract full-resolution original photos and carousel slides directly from TikTok posts.
-- 📁 **Date-Based Folder Hierarchy**: Each post is stored in its own subfolder named after the post's creation date (`YYYY-MM-DD_<id>/slide_01.jpg`).
+- 🎥 **HD No-Watermark Videos**: Download high-definition `.mp4` video files with original cover thumbnails.
+- 📸 **No-Watermark Photo Slideshows**: Extract full-resolution original photos and carousel slides.
+- 📁 **Date-Based Folder Hierarchy**: Each post is stored in its own subfolder named after the post's creation date (`YYYY-MM-DD_<id>/video.mp4` or `YYYY-MM-DD_<id>/slide_01.jpg`).
 - 📊 **Comprehensive Account Analytics**:
   - Total Views (`play_count`)
   - Total Likes (`digg_count`)
@@ -31,11 +32,11 @@ A **Model Context Protocol (MCP)** server that enables AI assistants (**Claude C
 
 | Tool | Description | Parameters |
 | :--- | :--- | :--- |
-| `tiktok_extract_post` | Extract unwatermarked HD images and complete metrics (views, likes, comments, shares, saves, audio) from a TikTok URL. | `url` (string) |
+| `tiktok_extract_post` | Extract unwatermarked HD video MP4 or photos, audio, and complete metrics (views, likes, comments, shares, saves) from any TikTok URL. | `url` (string) |
 | `tiktok_get_user_posts` | List recent post IDs, upload dates, and URLs for a TikTok user or profile URL. | `username` (string), `max` (number, optional) |
-| `tiktok_download_post` | Download all HD photos of a single TikTok post into a date-named folder (`YYYY-MM-DD_<id>`) with `post.json`. | `url` (string), `output_dir` (string, optional) |
-| `tiktok_download_user_slideshows` | Download all photo carousels from an account into date folders, with `post.json` in each and global `account_summary.json`. | `username` (string), `max` (number), `output_dir` (string), `photos_only` (boolean) |
-| `tiktok_get_user_analytics` | Analyze a profile's performance metrics and engagement rate without downloading files. | `username` (string), `max` (number) |
+| `tiktok_download_post` | Download a single TikTok post (`video.mp4` or `slide_01.jpg`...) into a date-named folder (`YYYY-MM-DD_<id>`) with `post.json`. | `url` (string), `output_dir` (string, optional) |
+| `tiktok_download_user_media` | Bulk download all videos and/or photo carousels from an account into date folders, with `post.json` in each and global `account_summary.json`. | `username` (string), `max` (number), `output_dir` (string), `media_type` (`"all"` \| `"photos"` \| `"videos"`) |
+| `tiktok_get_user_analytics` | Analyze a profile's performance metrics, totals, averages, and engagement rate without downloading files. | `username` (string), `max` (number) |
 
 ---
 
@@ -126,15 +127,17 @@ tiktok_downloads/
   └── hudabeauty/
       ├── account_summary.json            # Cumulative totals, averages, engagement & top posts
       ├── account_activity.json           # Complete chronological history of all posts
-      ├── 2026-08-16_7674774636999003406/ # Folder per post named with creation date
+      ├── 2026-08-16_7674774636999003406/ # Photo Slideshow post folder
       │   ├── slide_01.jpg
       │   ├── slide_02.jpg
+      │   ├── cover.jpg
       │   ├── post.json                   # Individual post metrics + global account recap
       │   └── account_activity_recap.json
-      └── 2026-08-15_7674392602606619917/
-          ├── slide_01.jpg
-          ├── slide_02.jpg
-          └── post.json
+      └── 2026-08-15_7674392602606619917/ # Video post folder
+          ├── video.mp4                   # HD unwatermarked video
+          ├── cover.jpg                   # Video cover thumbnail
+          ├── post.json
+          └── account_activity_recap.json
 ```
 
 ---

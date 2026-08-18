@@ -32,6 +32,8 @@ export interface TikTokPostData {
   images: string[];
   cover?: string;
   videoUrl?: string;
+  hdVideoUrl?: string;
+  duration?: number;
   music?: {
     id?: string;
     title?: string;
@@ -56,7 +58,9 @@ export interface AccountSummary {
   };
   activityTotals: {
     totalPostsAnalyzed: number;
-    totalSlidesCount: number;
+    totalSlideshowsCount: number;
+    totalVideosCount: number;
+    totalImagesCount: number;
     totalViews: number;
     totalLikes: number;
     totalComments: number;
@@ -78,10 +82,10 @@ export interface AccountSummary {
     oldestPostDate?: string;
   };
   topPerformingPosts: {
-    mostViewed?: { id: string; date: string; views: number; title: string } | null;
-    mostLiked?: { id: string; date: string; likes: number; title: string } | null;
-    mostShared?: { id: string; date: string; shares: number; title: string } | null;
-    mostCommented?: { id: string; date: string; comments: number; title: string } | null;
+    mostViewed?: { id: string; date: string; views: number; title: string; type: string } | null;
+    mostLiked?: { id: string; date: string; likes: number; title: string; type: string } | null;
+    mostShared?: { id: string; date: string; shares: number; title: string; type: string } | null;
+    mostCommented?: { id: string; date: string; comments: number; title: string; type: string } | null;
   };
   updatedAt: string;
 }
@@ -125,7 +129,7 @@ export async function resolveTikTokUrl(rawUrl: string): Promise<string> {
 }
 
 /**
- * Extract full post data and HD unwatermarked images
+ * Extract full post data and HD unwatermarked images/videos
  */
 export async function extractTikTokPost(rawUrl: string): Promise<TikTokPostData> {
   const targetUrl = await resolveTikTokUrl(rawUrl);
@@ -148,9 +152,10 @@ export async function extractTikTokPost(rawUrl: string): Promise<TikTokPostData>
   }
 
   const d = json.data;
+  const isSlideshow = Array.isArray(d.images) && d.images.length > 0;
   const images: string[] = [];
 
-  if (Array.isArray(d.images) && d.images.length > 0) {
+  if (isSlideshow) {
     for (const img of d.images) {
       if (typeof img === "string" && img.startsWith("http")) images.push(img);
     }
@@ -184,10 +189,12 @@ export async function extractTikTokPost(rawUrl: string): Promise<TikTokPostData>
       avatar: d.author?.avatar,
       profileUrl: `https://www.tiktok.com/@${userHandle}`,
     },
-    mediaType: Array.isArray(d.images) && d.images.length > 0 ? "slideshow" : "video",
+    mediaType: isSlideshow ? "slideshow" : "video",
     images,
     cover: d.origin_cover || d.cover,
-    videoUrl: d.play || d.wmplay,
+    videoUrl: d.hdplay || d.play || d.wmplay,
+    hdVideoUrl: d.hdplay,
+    duration: Number(d.duration) || 0,
     music: d.music_info
       ? {
           id: d.music_info.id,
