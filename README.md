@@ -3,26 +3,27 @@
 [![npm version](https://img.shields.io/npm/v/tiktok-downloader-mcp.svg)](https://www.npmjs.com/package/tiktok-downloader-mcp)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](https://opensource.org/licenses/MIT)
 
-A **Model Context Protocol (MCP)** server that allows AI models and assistants (Claude, Cursor, Windsurf, Antigravity, etc.) to **extract, analyze, and bulk-download TikTok photo slideshows/carousels in original HD without watermarks**, with automated post date folder categorization (`YYYY-MM-DD_<id>`) and complete account engagement analytics.
+A **Model Context Protocol (MCP)** server that enables AI assistants (**Claude Code**, **Claude Desktop**, **Cursor**, **Windsurf**, **Antigravity**) to **extract, analyze, and bulk-download TikTok photo slideshows and carousels in original HD without watermarks**, complete with automated date-based folder organization (`YYYY-MM-DD_<id>`) and in-depth account engagement analytics.
 
 ---
 
 ## ✨ Features
 
-- 📸 **No-Watermark HD Extraction**: Extract full-resolution photos and slide carousels directly from TikTok links.
-- 📁 **Date-Based Organization**: Each post is stored in its own subfolder named after the post's creation date (`YYYY-MM-DD_<id>/slide_01.jpg`).
+- 📸 **No-Watermark HD Extraction**: Extract full-resolution original photos and carousel slides directly from TikTok posts.
+- 📁 **Date-Based Folder Hierarchy**: Each post is stored in its own subfolder named after the post's creation date (`YYYY-MM-DD_<id>/slide_01.jpg`).
 - 📊 **Comprehensive Account Analytics**:
   - Total Views (`play_count`)
   - Total Likes (`digg_count`)
   - Total Comments (`comment_count`)
   - Total Shares (`share_count`)
   - Total Favorites / Saves (`collect_count`)
+  - Total Downloads (`download_count`)
   - Average Engagement Rate (%)
   - Top Performing Posts (Most viewed, most liked, most shared, most commented)
 - 📝 **Dual-Layer JSON Summaries**:
-  - `account_summary.json` & `account_activity.json` in the root account folder.
+  - `account_summary.json` & `account_activity.json` in the root account directory.
   - `post.json` & `account_activity_recap.json` inside **every single post folder**.
-- 🚀 **Zero Login Required**: Works reliably with short URLs (`vm.tiktok.com`, `vt.tiktok.com`), user handles (`@username`), and direct post links.
+- 🚀 **Zero Login Required**: Works out-of-the-box with short URLs (`vm.tiktok.com`, `vt.tiktok.com`), user handles (`@username`), and direct post links.
 
 ---
 
@@ -38,26 +39,35 @@ A **Model Context Protocol (MCP)** server that allows AI models and assistants (
 
 ---
 
-## 📦 Installation & Setup
+## 🚀 Quick Setup & Installation
 
-### Requirements
-- Node.js >= 18
-- `yt-dlp` (optional for profile listing): `brew install yt-dlp` or `pip install yt-dlp`
+### 1. Claude Code CLI (Recommended)
 
-### Quick Start with NPX
-
-You can run this server directly without installing:
+Add this MCP server directly to **Claude Code** with a single command:
 
 ```bash
-npx tiktok-downloader-mcp
+# Using NPX (Registry)
+claude mcp add tiktok-downloader -- npx -y tiktok-downloader-mcp
+
+# Or directly from GitHub
+claude mcp add tiktok-downloader -- npx -y github:abdouldotdev/tiktok-downloader-mcp
+```
+
+Verify the connection inside Claude Code by typing:
+```bash
+/mcp
+# or in terminal:
+claude mcp list
 ```
 
 ---
 
-## ⚙️ Configuration
+### 2. Claude Desktop
 
-### 1. Claude Desktop
-Add this to your `claude_desktop_config.json`:
+Add this configuration to your `claude_desktop_config.json`:
+
+- **macOS**: `~/Library/Application Support/Claude/claude_desktop_config.json`
+- **Windows**: `%APPDATA%\Claude\claude_desktop_config.json`
 
 ```json
 {
@@ -70,18 +80,41 @@ Add this to your `claude_desktop_config.json`:
 }
 ```
 
-### 2. Cursor / Windsurf / Antigravity
-Add to your project `.mcp.json` or global MCP settings:
+---
+
+### 3. Cursor & Windsurf
+
+Add to your project's `.cursor/mcp.json` or `.mcp.json`:
 
 ```json
 {
   "mcpServers": {
     "tiktok-downloader": {
-      "command": "node",
-      "args": ["/path/to/tiktok-downloader-mcp/dist/index.js"]
+      "command": "npx",
+      "args": ["-y", "tiktok-downloader-mcp"]
     }
   }
 }
+```
+
+---
+
+### 4. Antigravity CLI
+
+Add directly via the `agy` CLI tool:
+
+```bash
+agy mcp add tiktok-downloader -- npx -y tiktok-downloader-mcp
+```
+
+---
+
+### 5. Standalone NPX Run
+
+Run the MCP server directly via NPX without installation:
+
+```bash
+npx -y tiktok-downloader-mcp
 ```
 
 ---
@@ -90,7 +123,7 @@ Add to your project `.mcp.json` or global MCP settings:
 
 ```text
 tiktok_downloads/
-  └── styleshareapp/
+  └── hudabeauty/
       ├── account_summary.json            # Cumulative totals, averages, engagement & top posts
       ├── account_activity.json           # Complete chronological history of all posts
       ├── 2026-08-16_7674774636999003406/ # Folder per post named with creation date

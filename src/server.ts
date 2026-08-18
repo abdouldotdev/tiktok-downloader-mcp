@@ -137,7 +137,7 @@ export function createTikTokMcpServer(): McpServer {
     "tiktok_download_user_slideshows",
     "Download all photo slideshows / carousels from a TikTok account into organized date folders (YYYY-MM-DD_<id>), with post.json in each folder and full account_summary.json.",
     {
-      username: z.string().describe("TikTok username (e.g. @styleshareapp) or profile URL"),
+      username: z.string().describe("TikTok username (e.g. @hudabeauty) or profile URL"),
       max: z.number().optional().default(50).describe("Maximum number of posts to check (default: 50)"),
       output_dir: z.string().optional().default("./tiktok_downloads").describe("Target output directory"),
       photos_only: z.boolean().optional().default(true).describe("Only download photo slideshows/carousels (default: true)"),
