@@ -1,14 +1,17 @@
-# 📱 TikTok Media Downloader & Analytics MCP Server
+# 📱 TikTok Media Downloader & Analytics (CLI & MCP Server)
 
 [![npm version](https://img.shields.io/npm/v/tiktok-downloader-mcp.svg)](https://www.npmjs.com/package/tiktok-downloader-mcp)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](https://opensource.org/licenses/MIT)
 
-A **Model Context Protocol (MCP)** server that enables AI assistants (**Claude Code**, **Claude Desktop**, **Cursor**, **Windsurf**, **Antigravity**) to **extract, analyze, and bulk-download TikTok videos (HD MP4) and photo slideshows/carousels in original quality without watermarks**, complete with automated date-based folder organization (`YYYY-MM-DD_<id>`) and in-depth account engagement analytics.
+A dual-purpose tool that works both as a **Standalone CLI Downloader** (in your terminal without any AI required) and as a **Model Context Protocol (MCP) Server** for AI assistants (**Claude Code**, **Claude Desktop**, **Cursor**, **Windsurf**, **Antigravity**).
+
+Extract, analyze, and bulk-download **TikTok videos (HD MP4) and photo slideshows/carousels in original quality without watermarks**, complete with automated date-based folder categorization (`YYYY-MM-DD_<id>`) and in-depth account engagement analytics.
 
 ---
 
-## ✨ Features
+## ✨ Key Features
 
+- 🖥️ **Dual Mode**: Use it directly in your terminal as a CLI tool or plug it into your AI assistant via MCP.
 - 🎥 **HD No-Watermark Videos**: Download high-definition `.mp4` video files with original cover thumbnails.
 - 📸 **No-Watermark Photo Slideshows**: Extract full-resolution original photos and carousel slides.
 - 📁 **Date-Based Folder Hierarchy**: Each post is stored in its own subfolder named after the post's creation date (`YYYY-MM-DD_<id>/video.mp4` or `YYYY-MM-DD_<id>/slide_01.jpg`).
@@ -28,7 +31,67 @@ A **Model Context Protocol (MCP)** server that enables AI assistants (**Claude C
 
 ---
 
-## 🛠️ MCP Tools
+## 🖥️ 1. Standalone CLI Usage (Without MCP)
+
+You can run the downloader directly in your terminal using `npx` without configuring any MCP server or AI tool:
+
+### 📥 Single Post Download (Video or Photo Slideshow)
+```bash
+# Download a photo slideshow:
+npx tiktok-downloader-mcp "https://www.tiktok.com/@username/photo/123456789"
+
+# Download an HD video (MP4):
+npx tiktok-downloader-mcp "https://www.tiktok.com/@username/video/987654321"
+
+# Short links (vm.tiktok.com):
+npx tiktok-downloader-mcp "https://vm.tiktok.com/xxxxxx/"
+```
+
+### 👥 Bulk Profile Download (Entire Account)
+```bash
+# Download recent 50 posts from a TikTok user:
+npx tiktok-downloader-mcp @username
+
+# Analyze & download the last 20 posts:
+npx tiktok-downloader-mcp @username --max 20
+
+# Download ALL posts from the entire profile:
+npx tiktok-downloader-mcp @username --max all
+```
+
+### 🎯 Filter by Media Type (Photos vs Videos)
+```bash
+# 📸 Only photo carousels / slideshows:
+npx tiktok-downloader-mcp @username --media photos
+# or:
+npx tiktok-downloader-mcp @username --photos-only
+
+# 🎬 Only HD MP4 videos:
+npx tiktok-downloader-mcp @username --media videos
+# or:
+npx tiktok-downloader-mcp @username --videos-only
+
+# 🌟 Download everything (Both photos and videos):
+npx tiktok-downloader-mcp @username --media all
+```
+
+### 🛠️ CLI Options
+| Flag | Description | Default |
+| :--- | :--- | :--- |
+| `--media <all\|photos\|videos>` | Filter type of media to download | `all` |
+| `--photos-only` | Download only photo slideshows | `false` |
+| `--videos-only` | Download only video files | `false` |
+| `--max <N>` | Maximum number of posts to fetch (or `"all"`) | `50` |
+| `--out <dir>` | Destination directory | `./tiktok_downloads` |
+| `--help`, `-h` | Display CLI help menu | - |
+
+---
+
+## 🤖 2. Model Context Protocol (MCP) Setup
+
+Connect the server to your favorite AI assistant to let the LLM extract, analyze, and download TikTok content for you.
+
+### 🛠️ Available MCP Tools
 
 | Tool | Description | Parameters |
 | :--- | :--- | :--- |
@@ -40,36 +103,23 @@ A **Model Context Protocol (MCP)** server that enables AI assistants (**Claude C
 
 ---
 
-## 🚀 Quick Setup & Installation
+### ⚙️ MCP Installation Guides
 
-### 1. Claude Code CLI (Recommended)
-
-Add this MCP server directly to **Claude Code** with a single command:
-
+#### A. Claude Code CLI (Recommended)
 ```bash
-# Using NPX (Registry)
+# Add with NPX
 claude mcp add tiktok-downloader -- npx -y tiktok-downloader-mcp
 
 # Or directly from GitHub
 claude mcp add tiktok-downloader -- npx -y github:abdouldotdev/tiktok-downloader-mcp
 ```
 
-Verify the connection inside Claude Code by typing:
+Verify in Claude Code:
 ```bash
 /mcp
-# or in terminal:
-claude mcp list
 ```
 
----
-
-### 2. Claude Desktop
-
-Add this configuration to your `claude_desktop_config.json`:
-
-- **macOS**: `~/Library/Application Support/Claude/claude_desktop_config.json`
-- **Windows**: `%APPDATA%\Claude\claude_desktop_config.json`
-
+#### B. Claude Desktop (`claude_desktop_config.json`)
 ```json
 {
   "mcpServers": {
@@ -81,12 +131,7 @@ Add this configuration to your `claude_desktop_config.json`:
 }
 ```
 
----
-
-### 3. Cursor & Windsurf
-
-Add to your project's `.cursor/mcp.json` or `.mcp.json`:
-
+#### C. Cursor & Windsurf (`.cursor/mcp.json` or `.mcp.json`)
 ```json
 {
   "mcpServers": {
@@ -98,24 +143,9 @@ Add to your project's `.cursor/mcp.json` or `.mcp.json`:
 }
 ```
 
----
-
-### 4. Antigravity CLI
-
-Add directly via the `agy` CLI tool:
-
+#### D. Antigravity CLI
 ```bash
 agy mcp add tiktok-downloader -- npx -y tiktok-downloader-mcp
-```
-
----
-
-### 5. Standalone NPX Run
-
-Run the MCP server directly via NPX without installation:
-
-```bash
-npx -y tiktok-downloader-mcp
 ```
 
 ---
@@ -127,13 +157,15 @@ tiktok_downloads/
   └── example_user/
       ├── account_summary.json            # Cumulative totals, averages, engagement & top posts
       ├── account_activity.json           # Complete chronological history of all posts
-      ├── 2026-08-16_7674774636999003406/ # Photo Slideshow post folder
+      │
+      ├── 2026-08-16_7674774636999003406/ # 📸 Photo Slideshow post folder
       │   ├── slide_01.jpg
       │   ├── slide_02.jpg
       │   ├── cover.jpg
       │   ├── post.json                   # Individual post metrics + global account recap
       │   └── account_activity_recap.json
-      └── 2026-08-15_7674392602606619917/ # Video post folder
+      │
+      └── 2026-08-15_7674392602606619917/ # 🎬 Video post folder
           ├── video.mp4                   # HD unwatermarked video
           ├── cover.jpg                   # Video cover thumbnail
           ├── post.json
@@ -155,8 +187,11 @@ npm install
 # Build TypeScript
 npm run build
 
-# Run MCP server locally
-npm start
+# Run CLI directly
+node dist/index.js @username --max 10
+
+# Run MCP server on stdio
+node dist/index.js --stdio
 ```
 
 ---
