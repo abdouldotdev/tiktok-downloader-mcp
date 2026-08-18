@@ -1,0 +1,299 @@
+import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
+import { z } from "zod";
+import fs from "node:fs";
+import path from "node:path";
+import {
+  extractTikTokPost,
+  listUserPosts,
+  type TikTokPostData,
+} from "./lib/tiktokApi.js";
+import {
+  savePostToFolder,
+  computeAccountSummary,
+  downloadImagesToFolder,
+} from "./lib/downloader.js";
+
+export function createTikTokMcpServer(): McpServer {
+  const server = new McpServer({
+    name: "tiktok-downloader-mcp",
+    version: "1.0.0",
+  });
+
+  // ── 1. Tool: Extract single TikTok post ───────────────────────────────────────
+  server.tool(
+    "tiktok_extract_post",
+    "Extract all HD unwatermarked photos/slides and full metrics (views, likes, comments, shares, saves) from a TikTok URL.",
+    {
+      url: z.string().describe("TikTok post URL (e.g. https://www.tiktok.com/@user/photo/123... or https://vm.tiktok.com/...)"),
+    },
+    async ({ url }) => {
+      try {
+        const post = await extractTikTokPost(url);
+        return {
+          content: [
+            {
+              type: "text",
+              text: JSON.stringify(post, null, 2),
+            },
+          ],
+        };
+      } catch (err) {
+        return {
+          isError: true,
+          content: [
+            {
+              type: "text",
+              text: `Error extracting TikTok post: ${err instanceof Error ? err.message : String(err)}`,
+            },
+          ],
+        };
+      }
+    }
+  );
+
+  // ── 2. Tool: Get user posts list ─────────────────────────────────────────────
+  server.tool(
+    "tiktok_get_user_posts",
+    "List recent post IDs, upload dates, and URLs for a TikTok user or profile URL.",
+    {
+      username: z.string().describe("TikTok username (e.g. @hudabeauty or hudabeauty) or profile URL"),
+      max: z.number().optional().default(50).describe("Maximum number of posts to fetch (default: 50)"),
+    },
+    async ({ username, max }) => {
+      try {
+        const posts = await listUserPosts(username, max);
+        return {
+          content: [
+            {
+              type: "text",
+              text: JSON.stringify({ username, total: posts.length, posts }, null, 2),
+            },
+          ],
+        };
+      } catch (err) {
+        return {
+          isError: true,
+          content: [
+            {
+              type: "text",
+              text: `Error listing user posts: ${err instanceof Error ? err.message : String(err)}`,
+            },
+          ],
+        };
+      }
+    }
+  );
+
+  // ── 3. Tool: Download single post images ─────────────────────────────────────
+  server.tool(
+    "tiktok_download_post",
+    "Download all HD unwatermarked photos of a TikTok post into a date-named folder (YYYY-MM-DD_<id>) with full metadata JSON.",
+    {
+      url: z.string().describe("TikTok post URL"),
+      output_dir: z.string().optional().default("./tiktok_downloads").describe("Target directory (default: ./tiktok_downloads)"),
+    },
+    async ({ url, output_dir }) => {
+      try {
+        const post = await extractTikTokPost(url);
+        const resolvedOut = path.resolve(process.cwd(), output_dir);
+        const { folderPath, downloadedImages } = await savePostToFolder(post, resolvedOut);
+
+        return {
+          content: [
+            {
+              type: "text",
+              text: JSON.stringify(
+                {
+                  success: true,
+                  post_id: post.id,
+                  author: post.author.uniqueId,
+                  date: post.formattedDate,
+                  images_downloaded: downloadedImages,
+                  folder_path: folderPath,
+                  stats: post.stats,
+                },
+                null,
+                2
+              ),
+            },
+          ],
+        };
+      } catch (err) {
+        return {
+          isError: true,
+          content: [
+            {
+              type: "text",
+              text: `Error downloading TikTok post: ${err instanceof Error ? err.message : String(err)}`,
+            },
+          ],
+        };
+      }
+    }
+  );
+
+  // ── 4. Tool: Download all user slideshows & account activity ──────────────────
+  server.tool(
+    "tiktok_download_user_slideshows",
+    "Download all photo slideshows / carousels from a TikTok account into organized date folders (YYYY-MM-DD_<id>), with post.json in each folder and full account_summary.json.",
+    {
+      username: z.string().describe("TikTok username (e.g. @styleshareapp) or profile URL"),
+      max: z.number().optional().default(50).describe("Maximum number of posts to check (default: 50)"),
+      output_dir: z.string().optional().default("./tiktok_downloads").describe("Target output directory"),
+      photos_only: z.boolean().optional().default(true).describe("Only download photo slideshows/carousels (default: true)"),
+    },
+    async ({ username, max, output_dir, photos_only }) => {
+      try {
+        const cleanUser = username.replace(/^@/, "").replace(/^https?:\/\/(www\.)?tiktok\.com\/@?/, "").replace(/[?#/].*$/, "").trim();
+        const resolvedOut = path.resolve(process.cwd(), output_dir);
+        const userAccountDir = path.join(resolvedOut, cleanUser);
+
+        const listed = await listUserPosts(cleanUser, max);
+        const processedPosts: Array<{ postFolder: string; post: TikTokPostData }> = [];
+        let authorProfile: TikTokPostData["author"] | undefined;
+
+        for (const item of listed) {
+          try {
+            const data = await extractTikTokPost(item.postUrl);
+            if (photos_only && data.mediaType !== "slideshow") continue;
+
+            if (!authorProfile && data.author) {
+              authorProfile = data.author;
+            }
+
+            const folderName = `${data.formattedDate}_${data.id}`;
+            const postFolder = path.join(userAccountDir, folderName);
+
+            await downloadImagesToFolder(data.images, postFolder);
+            processedPosts.push({ postFolder, post: data });
+          } catch {
+            // Skip post if error
+          }
+        }
+
+        const summary = computeAccountSummary(
+          cleanUser,
+          authorProfile,
+          processedPosts.map((p) => p.post)
+        );
+
+        // Save account_summary.json and account_activity.json in root user directory
+        if (!fs.existsSync(userAccountDir)) fs.mkdirSync(userAccountDir, { recursive: true });
+        fs.writeFileSync(path.join(userAccountDir, "account_summary.json"), JSON.stringify(summary, null, 2));
+        fs.writeFileSync(
+          path.join(userAccountDir, "account_activity.json"),
+          JSON.stringify({ ...summary, all_posts: processedPosts.map((p) => p.post) }, null, 2)
+        );
+
+        // Write post.json and account_activity_recap.json in each individual post folder
+        for (const { postFolder, post } of processedPosts) {
+          const postJsonContent = {
+            post_details: {
+              id: post.id,
+              user: cleanUser,
+              author: post.author,
+              title: post.title,
+              content_desc: post.contentDesc,
+              date: post.formattedDate,
+              timestamp: post.createTime,
+              url: post.url,
+              slides_count: post.images.length,
+              stats: post.stats,
+              music: post.music,
+            },
+            account_recap: {
+              username: summary.account.username,
+              nickname: summary.account.nickname,
+              activity_totals: summary.activityTotals,
+              performance_averages: summary.performanceAverages,
+            },
+            raw_tiktok_data: post.rawData,
+          };
+          fs.writeFileSync(path.join(postFolder, "post.json"), JSON.stringify(postJsonContent, null, 2));
+          fs.writeFileSync(path.join(postFolder, "account_activity_recap.json"), JSON.stringify(summary, null, 2));
+        }
+
+        return {
+          content: [
+            {
+              type: "text",
+              text: JSON.stringify(
+                {
+                  success: true,
+                  account: summary.account,
+                  slideshows_downloaded: processedPosts.length,
+                  total_images: summary.activityTotals.totalSlidesCount,
+                  totals: summary.activityTotals,
+                  averages: summary.performanceAverages,
+                  top_posts: summary.topPerformingPosts,
+                  output_directory: userAccountDir,
+                },
+                null,
+                2
+              ),
+            },
+          ],
+        };
+      } catch (err) {
+        return {
+          isError: true,
+          content: [
+            {
+              type: "text",
+              text: `Error downloading user slideshows: ${err instanceof Error ? err.message : String(err)}`,
+            },
+          ],
+        };
+      }
+    }
+  );
+
+  // ── 5. Tool: Get user analytics summary (without downloading files) ─────────
+  server.tool(
+    "tiktok_get_user_analytics",
+    "Analyze a TikTok profile's recent engagement metrics, total views, likes, comments, shares, engagement rate, and top performing posts without downloading files.",
+    {
+      username: z.string().describe("TikTok username or profile URL"),
+      max: z.number().optional().default(30).describe("Number of recent posts to analyze (default: 30)"),
+    },
+    async ({ username, max }) => {
+      try {
+        const cleanUser = username.replace(/^@/, "").replace(/^https?:\/\/(www\.)?tiktok\.com\/@?/, "").replace(/[?#/].*$/, "").trim();
+        const listed = await listUserPosts(cleanUser, max);
+        const posts: TikTokPostData[] = [];
+        let authorProfile: TikTokPostData["author"] | undefined;
+
+        for (const item of listed) {
+          try {
+            const data = await extractTikTokPost(item.postUrl);
+            if (!authorProfile && data.author) authorProfile = data.author;
+            posts.push(data);
+          } catch {}
+        }
+
+        const summary = computeAccountSummary(cleanUser, authorProfile, posts);
+
+        return {
+          content: [
+            {
+              type: "text",
+              text: JSON.stringify(summary, null, 2),
+            },
+          ],
+        };
+      } catch (err) {
+        return {
+          isError: true,
+          content: [
+            {
+              type: "text",
+              text: `Error analyzing user analytics: ${err instanceof Error ? err.message : String(err)}`,
+            },
+          ],
+        };
+      }
+    }
+  );
+
+  return server;
+}
