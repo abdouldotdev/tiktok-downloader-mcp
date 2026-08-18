@@ -91,12 +91,12 @@ Add to your project `.mcp.json` or global MCP settings:
 ```text
 tiktok_downloads/
   └── styleshareapp/
-      ├── account_summary.json            # Totaux, moyennes d'engagement et top posts
-      ├── account_activity.json           # Historique chronologique complet
-      ├── 2026-08-16_7674774636999003406/ # Dossier par post nommé avec la date
+      ├── account_summary.json            # Cumulative totals, averages, engagement & top posts
+      ├── account_activity.json           # Complete chronological history of all posts
+      ├── 2026-08-16_7674774636999003406/ # Folder per post named with creation date
       │   ├── slide_01.jpg
       │   ├── slide_02.jpg
-      │   ├── post.json                  # Stats du post + récap global
+      │   ├── post.json                   # Individual post metrics + global account recap
       │   └── account_activity_recap.json
       └── 2026-08-15_7674392602606619917/
           ├── slide_01.jpg
@@ -110,7 +110,7 @@ tiktok_downloads/
 
 ```bash
 # Clone the repository
-git clone https://github.com/Prodevking1/tiktok-downloader-mcp.git
+git clone https://github.com/abdouldotdev/tiktok-downloader-mcp.git
 cd tiktok-downloader-mcp
 
 # Install dependencies
@@ -127,4 +127,4 @@ npm start
 
 ## 📄 License
 
-MIT © [Prodevking](https://github.com/Prodevking1)
+MIT © [abdouldotdev](https://github.com/abdouldotdev)
